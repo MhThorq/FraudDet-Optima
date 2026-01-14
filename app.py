@@ -53,6 +53,9 @@ class FraudInferencePipeline:
             lambda x: self.state['hourly'].get((x['card1'], x['Transaction_hour']), 0), axis=1
         )
 
+        # Memastikan urutan kolom sama dengan yang diharapkan XGBoost
+        df = df[self.xgb_model.feature_names_in_]
+
         return df
 
     def predict(self, raw_data):
