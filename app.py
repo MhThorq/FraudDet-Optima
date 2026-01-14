@@ -60,8 +60,8 @@ with st.form("transaction_form"):
         addr1 = st.number_input("Address 1", value=315.0)
 
     # Note: Tambahkan semua field yang diperlukan oleh model Anda di sini
-    
-    submitted = st.form_submit_with_button("Check Transaction")
+
+    submitted = st.form_submit_button("Check Transaction")
 
 if submitted:
     pipeline = FraudInferencePipeline()
