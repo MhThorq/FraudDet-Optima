@@ -15,41 +15,43 @@ class FraudInferencePipeline:
         self.threshold = 0.3
 
     def preprocess(self, raw_data):
-        # 1. Konversi dictionary input ke DataFrame 1 baris
+        # 1. Konversi input ke DataFrame
         df = pd.DataFrame([raw_data])
 
-        # 2. FIX: Reindex agar DataFrame memiliki semua kolom yang pernah ada saat training
-        # Kolom yang tidak diinput di form akan diisi dengan NaN secara otomatis
-        all_expected_cols = list(self.cat_cols) + list(self.num_cols)
-        df = df.reindex(columns=all_expected_cols)
+        # 2. Reindex agar memiliki kolom asli (cat + num)
+        # Pastikan kolom isFraud tidak ikut karena itu target
+        base_features = [c for c in list(self.cat_cols) + list(self.num_cols) if c != 'isFraud']
+        df = df.reindex(columns=base_features)
 
-        # 3. Imputasi (Sekarang tidak akan KeyError karena kolom sudah ada/NaN)
+        # 3. Imputasi dasar
         df[self.cat_cols] = df[self.cat_cols].fillna('MISSING')
         df[self.num_cols] = df[self.num_cols].fillna(-999)
 
         # 4. Label Encoding
         for col in self.cat_cols:
             le = self.encoders[col]
-            # Handle label baru yang tidak ada saat training
             df[col] = df[col].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
-        # 5. Feature Engineering: Time
+        # --- LANGKAH KRUSIAL: ANOMALY SCORE ---
+        # Kita ambil anomaly score menggunakan kolom asli SAJA (sesuai saat fit)
+        # Drop TransactionID jika ada karena biasanya tidak dipakai saat fit IsoForest
+        features_for_iso = df.drop(columns=['TransactionID'], errors='ignore')
+        df['anomaly_score'] = self.iso_model.predict(features_for_iso)
+        # --------------------------------------
+
+        # 5. BARU TAMBAHKAN Feature Engineering (Agregat & Time)
+        # Menambahkan fitur setelah anomaly score agar tidak merusak input IsoForest
         df['Transaction_hour'] = (df['TransactionDT'] / 3600) % 24
 
-        # 6. Feature Engineering: Aggregates
         for col in ['card1', 'card2', 'card3', 'card5', 'addr1', 'P_emaildomain']:
-            df[f'{col}_count'] = df[col].map(self.state['counts'][col]).fillna(0)
+            df[f'{col}_count'] = df[col].map(self.state['counts'].get(col, {})).fillna(0)
 
-        df['Amt_to_mean_card1'] = df['TransactionAmt'] / df['card1'].map(self.state['means']['card1_mean']).fillna(1)
+        card1_map = self.state['means'].get('card1_mean', {})
+        df['Amt_to_mean_card1'] = df['TransactionAmt'] / df['card1'].map(card1_map).fillna(1)
         
         df['trans_count_per_hour'] = df.apply(
             lambda x: self.state['hourly'].get((x['card1'], x['Transaction_hour']), 0), axis=1
         )
-
-        # 7. Anomaly Score (Gunakan kolom yang sesuai dengan saat training Isolation Forest)
-        # Model IsoForest Anda dilatih tanpa 'isFraud' dan 'TransactionID'
-        features_for_iso = df.drop(columns=['isFraud', 'TransactionID'], errors='ignore')
-        df['anomaly_score'] = self.iso_model.predict(features_for_iso)
 
         return df
 
