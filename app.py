@@ -23,7 +23,7 @@ class FraudInferencePipeline:
         base_features = [c for c in list(self.cat_cols) + list(self.num_cols) if c != 'isFraud']
         df = df.reindex(columns=base_features)
 
-        # 3. Imputasi dasar (PERBAIKAN: Filter kolom agar tidak mencari isFraud)
+        # 3. Imputasi dasar (Filter kolom agar tidak mencari isFraud yang sudah di-drop)
         cols_to_fill_cat = [c for c in self.cat_cols if c in df.columns]
         cols_to_fill_num = [c for c in self.num_cols if c in df.columns]
 
@@ -36,9 +36,9 @@ class FraudInferencePipeline:
             df[col] = df[col].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
         # --- LANGKAH KRUSIAL: ANOMALY SCORE ---
-        # Kita ambil anomaly score menggunakan kolom asli SAJA (sesuai saat fit)
-        # Drop TransactionID jika ada karena biasanya tidak dipakai saat fit IsoForest
-        features_for_iso = df.drop(columns=['TransactionID'], errors='ignore')
+        # PERBAIKAN: Gunakan feature_names_in_ dari model untuk memaksa urutan kolom yang benar
+        # Ini akan menyelesaikan ValueError terkait urutan fitur
+        features_for_iso = df[self.iso_model.feature_names_in_]
         df['anomaly_score'] = self.iso_model.predict(features_for_iso)
         # --------------------------------------
 
