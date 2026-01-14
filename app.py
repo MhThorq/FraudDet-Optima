@@ -15,16 +15,28 @@ class FraudInferencePipeline:
         self.threshold = 0.3
 
     def preprocess(self, raw_data):
+        # 1. Konversi dictionary input ke DataFrame 1 baris
         df = pd.DataFrame([raw_data])
+
+        # 2. FIX: Reindex agar DataFrame memiliki semua kolom yang pernah ada saat training
+        # Kolom yang tidak diinput di form akan diisi dengan NaN secara otomatis
+        all_expected_cols = list(self.cat_cols) + list(self.num_cols)
+        df = df.reindex(columns=all_expected_cols)
+
+        # 3. Imputasi (Sekarang tidak akan KeyError karena kolom sudah ada/NaN)
         df[self.cat_cols] = df[self.cat_cols].fillna('MISSING')
         df[self.num_cols] = df[self.num_cols].fillna(-999)
 
+        # 4. Label Encoding
         for col in self.cat_cols:
             le = self.encoders[col]
+            # Handle label baru yang tidak ada saat training
             df[col] = df[col].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
+        # 5. Feature Engineering: Time
         df['Transaction_hour'] = (df['TransactionDT'] / 3600) % 24
 
+        # 6. Feature Engineering: Aggregates
         for col in ['card1', 'card2', 'card3', 'card5', 'addr1', 'P_emaildomain']:
             df[f'{col}_count'] = df[col].map(self.state['counts'][col]).fillna(0)
 
@@ -34,7 +46,11 @@ class FraudInferencePipeline:
             lambda x: self.state['hourly'].get((x['card1'], x['Transaction_hour']), 0), axis=1
         )
 
-        df['anomaly_score'] = self.iso_model.predict(df.drop(columns=['TransactionID'], errors='ignore'))
+        # 7. Anomaly Score (Gunakan kolom yang sesuai dengan saat training Isolation Forest)
+        # Model IsoForest Anda dilatih tanpa 'isFraud' dan 'TransactionID'
+        features_for_iso = df.drop(columns=['isFraud', 'TransactionID'], errors='ignore')
+        df['anomaly_score'] = self.iso_model.predict(features_for_iso)
+
         return df
 
     def predict(self, raw_data):
