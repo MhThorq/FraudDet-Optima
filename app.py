@@ -100,6 +100,7 @@ if submitted:
     }
     
     result = pipeline.predict(data)
+    st.write(f"Raw Probability: {result['confidence']}")
     
     if result["is_fraud"]:
         st.error(f"🚨 HIGH RISK! Score: {result['confidence']}")
