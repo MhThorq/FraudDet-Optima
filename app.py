@@ -12,7 +12,7 @@ class FraudInferencePipeline:
         self.state = joblib.load('state_mapping.pkl')
         self.cat_cols = joblib.load('cat_cols.pkl')
         self.num_cols = joblib.load('num_cols.pkl')
-        self.threshold = 0.3
+        self.threshold = 0.15
 
     def preprocess(self, raw_data):
         # 1. Konversi input ke DataFrame
