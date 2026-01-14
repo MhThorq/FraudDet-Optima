@@ -23,12 +23,15 @@ class FraudInferencePipeline:
         base_features = [c for c in list(self.cat_cols) + list(self.num_cols) if c != 'isFraud']
         df = df.reindex(columns=base_features)
 
-        # 3. Imputasi dasar
-        df[self.cat_cols] = df[self.cat_cols].fillna('MISSING')
-        df[self.num_cols] = df[self.num_cols].fillna(-999)
+        # 3. Imputasi dasar (PERBAIKAN: Filter kolom agar tidak mencari isFraud)
+        cols_to_fill_cat = [c for c in self.cat_cols if c in df.columns]
+        cols_to_fill_num = [c for c in self.num_cols if c in df.columns]
+
+        df[cols_to_fill_cat] = df[cols_to_fill_cat].fillna('MISSING')
+        df[cols_to_fill_num] = df[cols_to_fill_num].fillna(-999)
 
         # 4. Label Encoding
-        for col in self.cat_cols:
+        for col in cols_to_fill_cat:
             le = self.encoders[col]
             df[col] = df[col].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
@@ -40,7 +43,6 @@ class FraudInferencePipeline:
         # --------------------------------------
 
         # 5. BARU TAMBAHKAN Feature Engineering (Agregat & Time)
-        # Menambahkan fitur setelah anomaly score agar tidak merusak input IsoForest
         df['Transaction_hour'] = (df['TransactionDT'] / 3600) % 24
 
         for col in ['card1', 'card2', 'card3', 'card5', 'addr1', 'P_emaildomain']:
