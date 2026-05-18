@@ -85,13 +85,13 @@ st.write("Masukkan detail transaksi untuk memeriksa risiko fraud.")
 with st.form("transaction_form"):
     col1, col2 = st.columns(2)
     with col1:
-        tx_id = st.number_input("Transaction ID", value=3000000)
-        tx_amt = st.number_input("Transaction Amount", value=50.0)
-        card1 = st.number_input("Card 1", value=13926)
+        tx_id = st.number_input("ID Transaksi", value=3000000)
+        tx_amt = st.number_input("Jumlah Transaksi", value=50.0)
+        card1 = st.number_input("Identitas Kartu", value=13926)
     with col2:
-        tx_dt = st.number_input("Transaction DT (Seconds)", value=86400)
-        p_email = st.text_input("P_emaildomain", value="gmail.com")
-        addr1 = st.number_input("Address 1", value=315.0)
+        tx_dt = st.number_input("Waktu Transaksi (Detik)", value=86400)
+        p_email = st.text_input("Domain Email", value="gmail.com")
+        addr1 = st.number_input("Kode Wilayah Transaksi", value=315.0)
 
     submitted = st.form_submit_button("Check Transaction")
 
