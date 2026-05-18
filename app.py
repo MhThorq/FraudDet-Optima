@@ -93,7 +93,7 @@ with st.form("transaction_form"):
         p_email = st.text_input("Domain Email", value="gmail.com")
         addr1 = st.number_input("Kode Wilayah Transaksi", value=315.0)
 
-    submitted = st.form_submit_button("Check Transaction")
+    submitted = st.form_submit_button("Cek Transaksi")
 
 if submitted:
     pipeline = FraudInferencePipeline()
